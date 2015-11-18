@@ -7,14 +7,15 @@ Usage:
     spork <new/start/end/cleanup> <spork name> <number of concurrent threads / max>
 
 Commands: 
-	new - starts a new spork with a defined number of slots. 
-	next - iterates spork
-	finish - ends that iteration
-	wait - suspends the script until the named spork is finished
-	cleanup - removes instances of the named spork. This is automatically done by finish
+<ul>
+	<li>new - starts a new spork with a defined number of slots. </li>
+	<li>next - iterates spork</li>
+	<li>finish - ends that iteration</li>
+	<li>wait - suspends the script until the named spork is finished</li>
+	<li>cleanup - removes instances of the named spork. This is automatically done by finish
 		  when the count reaches 0, but this is here nonetheless. Using "all" as a 
-		  name removes all trace of all sporks.
-
+		  name removes all trace of all sporks.</li>
+	</ul>
 Example:
 
     for i in bad*.txt; do 

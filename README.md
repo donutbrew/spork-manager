@@ -2,7 +2,8 @@ This is a simple function to count and manage processes in bash. A crappy homage
 
 To use, you have to either source spork-manager.sh or copy and paste the spork function at the top of your script.
 
-Usage: spork <new/start/end/cleanup> <spork name> <number of concurrent threads / max>
+Usage:
+    spork <new/start/end/cleanup> <spork name> <number of concurrent threads / max>
 
 Commands: 
 	new - starts a new spork with a defined number of slots. 

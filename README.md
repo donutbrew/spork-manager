@@ -14,18 +14,18 @@ Commands:
 		  name removes all trace of all sporks.
 
 Example:
-        ```bash
-	for i in bad*.txt; do 
-            spork new MYSPORK max 
-          	(       spork next MYSPORK
-			grep -v "donutbrew" $i > scrub_$i
-			rm -f $i
-			spork end MYSPORK
-		) &
+    ```Shell	
+    for i in bad*.txt; do 
+        spork new MYSPORK max 
+            (   spork next MYSPORK
+                grep -v "donutbrew" $i > scrub_$i
+                rm -f $i
+                spork end MYSPORK
+            ) &
 		
-	done
-	spork wait MYSPORK
-	```
+    done
+    spork wait MYSPORK
+    ```
 
 Note that the spork has to be  created outside a subshell, but the next, the code, and the finish func must be contained in a subshell and should be backgrounded (a limitation of shell). This means that any variables changed will not propogate to the main script. I might think of a way to do that later, but fo now, treat it like a subshell. 
 

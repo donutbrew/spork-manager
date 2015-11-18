@@ -14,7 +14,7 @@ Commands:
 		  name removes all trace of all sporks.
 
 Example:
-    ```Shell	
+
     for i in bad*.txt; do 
         spork new MYSPORK max 
             (   spork next MYSPORK

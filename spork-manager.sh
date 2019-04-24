@@ -115,7 +115,7 @@ spork () {
 				curr=$(cat $sporkdir/$2.curr)
 				if [ $curr -gt 0 ]; then echo "SporkManager warning: Cleaning up spork before empty." >&2 ; fi
 				rm $sporkdir/$2.curr $sporkdir/$2.total
-				#if [ ! "ls -A $sporkdir" ]; then rmdir $sporkdir && echo "Cleaning up after spork" ; fi
+				rmdir $sporkdir && echo "Cleaning up after spork" ; fi
 			fi
 			;;
 		*)	

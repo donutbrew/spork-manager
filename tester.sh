@@ -1,19 +1,22 @@
 #!/bin/bash
 
-
+set -x
 source spork-manager.sh
-
 rm outfile
-spork new mys 10 2>&1
-for ((i=0; i < 50; i++)); do
+mkdir ~/spork
+spork new mys 10 2>&1 > main.start
+ord=0
+for ((i=0; i < 43; i++)); do
 (	spork next mys 2> $i.next
-	sleep 5s
-	if [ $i -eq 7 ]; then sleep 5s; fi
-	echo Counting $i >> outfile
+	echo $ord $t
+	# if [ $i -eq 7 ]; then sleep 5s; fi
+	./sub.sh
+	echo $ord Counting $i >> outfile
 	spork finish mys 2> $i.finish
 	)  &
-
+	((ord++))
 done
 echo waiting
-spork wait mys 2> finish
+spork wait mys 2> main.finish
+# sleep 30s
 echo done

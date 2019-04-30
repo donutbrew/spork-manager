@@ -14,38 +14,54 @@
 #                               waiting. Using "all" as a handle removes all 
 #                               trace of all sporks.
 #
-# Version 0.1, 2015-11-18
+# Version 0.2, 2019-04-30
 # Author: Clint Paden
 # Usage : spork <new/start/end/cleanup> <spork name> <number of concurrent threads / max>
- 
-declare -f spork 
+
+declare -f spork
+declare sporkdir
+spork_init=0
+spork_debug=1
+
 
 spork_count () {
+	
+	[ $spork_init -eq 0 ] 	 && echo "SporkManager Error: Trying to modify a non-existant spork: $2." >&2
+	[ -f $sporkdir/$2.curr ] || echo "SporkManager Error: $sporkdir/$2.curr not found! This is bad." >&2
 	( 	
-		unset count
-		exec {count}< $sporkdir/$2.curr
-		flock -e $count
-		thiscount=$(cat $sporkdir/$2.curr)
+		cat $sporkdir/$2.curr >> testfile; echo "---" >> testfile
+		
+		flock -x 3 || { [ $spork_debug ] && echo "Unable to get a lock on $sporkdir/$2.curr" ; }
+		local thiscount=$(<$sporkdir/$2.curr)
+		[ $spork_debug ] && echo "thiscount is $thiscount" >&2
+		case $1 in
+			sub)
+				[ $thiscount -lt 1 ] && echo "SporkManager Error: lowering count below 1--something is wrong." >&2
+				echo $((--thiscount)) >&3 
+				;;
 
-		if [ $1 == "add" ]; then
-			echo $((++thiscount)) > $sporkdir/$2.curr
-		elif [ $1 == "sub" ]; then
-			echo $((--thiscount)) > $sporkdir/$2.curr
-		elif [ $1 == "read" ]; then
-			echo $thiscount
-		elif [ $1 == "cap" ]; then
-#			total=$($sporkdir/$2.total
-			if [  $thiscount -ge $total ]; then echo true; else echo false; fi
-		elif [ $1 == "addgo" ]; then
-			if [ $thiscount -lt $total ]; then
-			echo $((++thiscount)) > $sporkdir/$2.curr
-			echo false
-			else echo true
-			fi
-		else
-			echo "Counting error" && exit 34535 >&2
-		fi
-	)
+			read)
+				echo $thiscount
+				;;
+
+			cap)
+				if [  $thiscount -ge $total ]; then echo true; else echo false; fi
+				;;
+
+			add)
+				if [ $thiscount -lt $total ]; then
+					echo $((++thiscount)) >&3 
+					return 0  #return success
+				else 
+					return 1  #return failure
+				fi
+				;;
+			*) 
+				echo "Counting error" && exit 34535 >&2
+				;;
+		
+		esac
+	) 3<>$sporkdir/$2.curr
 }
 
 spork () {
@@ -53,10 +69,14 @@ spork () {
 
 	case $1 in
 		new) 
-			if [ ! -n "${spork_init+1}" ] || [ $spork_init -ne 1 ]; then 
-				sporkdir=$(mktemp -d ~/.spork.XXXXX) && chmod 700 $sporkdir && spork_init=1
-#				rm ~/.spork.test -r; mkdir ~/.spork.test; sporkdir="$HOME/.spork.test" && chmod 700 $sporkdir && spork_init=1#this line is for testing
+			if [ $spork_init -ne 1 ]; then 
+				sporkdir=~/spork && spork_init=1  #$(mktemp -d) && spork_init=1 && [ $spork_debug ]
+				# sporkdir=$(mktemp -d ~/.spork.XXXXX) && chmod 700 $sporkdir && spork_init=1
 									
+			fi
+			if [ -f $2.total ]; then
+				echo "Fork $2 already declared! Fatal error" >&2
+				exit 1
 			fi
 			if [ "$3" == "max" ] ; then 
 
@@ -67,7 +87,8 @@ spork () {
 				elif [[ $(uname) =~ [Ll]inux ]]; then
 					totalcpu=$(grep -c ^processor /proc/cpuinfo)
 				else
-					echo "Error: System type not detected. You may not use \"max\"." >&2
+					echo "Error: System type not detected. You may not use \"max\". Setting to 1 for now." >&2
+					totalcpu=1
 				fi
 				
 				echo $totalcpu > $sporkdir/$2.total
@@ -78,14 +99,14 @@ spork () {
 			fi
 			;;
 		next)	
-			if [ ! -e $sporkdir/$2.total ] ; then 
+			if [ ! -f $sporkdir/$2.total ] ; then 
 				echo "Unknown Fork $2" >&2
 			else
-				total=$(cat $sporkdir/$2.total)
-				while [ "$(spork_count addgo $2)" == "true" ]; do 
+				# total=$(cat $sporkdir/$2.total)
+				while ! $(spork_count add $2); do 
 					sleep 5s
 				done
-				echo "%%% Curr is $(cat sporkdir/$2.curr)" >&2
+				[ $spork_debug ] && echo "%%% Curr is $(cat $sporkdir/$2.curr)" >&2  
 
 			fi
 				
@@ -93,8 +114,8 @@ spork () {
 		finish) 
 			total=$(cat $sporkdir/$2.total)
 			if [ ! -e $sporkdir/$2.total ] ; then
-                                echo "Unknown Fork $2" >&2
-                        else
+            	echo "Unknown Fork $2" >&2
+            else
 				spork_count sub $2
 			fi
 
@@ -109,17 +130,21 @@ spork () {
 			;;
 		cleanup)
 			if [ $2 == "all" ] ; then 
-				rm -rf $sporkdir
+				# rm -rf $sporkdir
 				spork_init=0
 			else
 				curr=$(cat $sporkdir/$2.curr)
-				if [ $curr -gt 0 ]; then echo "SporkManager warning: Cleaning up spork before empty." >&2 ; fi
-				rm $sporkdir/$2.curr $sporkdir/$2.total
-				rmdir $sporkdir && echo "Cleaning up after spork" ; fi
+				if [ $curr -gt 0 ]; then 
+					echo "SporkManager warning: Cleaning up spork before empty. Waiting on $2..." >&2
+					spork wait $2
+					echo "SporkManager: $2 finished. Cleaning up now." >&2
+				fi
+				rm $sporkdir/$2.curr $sporkdir/$2.total 	&& [ $spork_debug ] && echo "Removing count files $sporkdir/$2.curr , $sporkdir/$2.total" >&2
+				rmdir $sporkdir 							&& [ $spork_debug ] && echo "Cleaning up after spork"  >&2
 			fi
 			;;
 		*)	
-			echo "Spork-Manager Error: Command $1 not valid" && exit 1
+			echo "Spork-Manager Error: Command $1 not valid" >&2 && exit 1
 			;;
 		esac
 }

@@ -14,7 +14,7 @@
 #                               waiting. Using "all" as a handle removes all 
 #                               trace of all sporks.
 #
-# Version 0.2, 2019-04-30
+# Version 0.2.1, 2019-04-30
 # Author: Clint Paden
 # Usage : spork <new/start/end/cleanup> <spork name> <number of concurrent threads / max>
 
@@ -22,7 +22,7 @@ declare -f spork
 declare sporkdir
 spork_init=0
 spork_debug=1
-
+set -x
 
 spork_count () {
 	
@@ -33,6 +33,7 @@ spork_count () {
 		
 		flock -x 3 || { [ $spork_debug ] && echo "Unable to get a lock on $sporkdir/$2.curr" ; }
 		local thiscount=$(<$sporkdir/$2.curr)
+		local total=$(<$sporkdir/$2.total)
 		[ $spork_debug ] && echo "thiscount is $thiscount" >&2
 		case $1 in
 			sub)
@@ -70,7 +71,7 @@ spork () {
 	case $1 in
 		new) 
 			if [ $spork_init -ne 1 ]; then 
-				sporkdir=~/spork && spork_init=1  #$(mktemp -d) && spork_init=1 && [ $spork_debug ]
+				sporkdir=$(mktemp -d) && spork_init=1 && [ $spork_debug ] && echo "sporkdir is on $HOSTNAME at $sporkdir"
 				# sporkdir=$(mktemp -d ~/.spork.XXXXX) && chmod 700 $sporkdir && spork_init=1
 									
 			fi
